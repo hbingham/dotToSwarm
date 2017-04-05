@@ -102,7 +102,7 @@ def checkService(service, managerName):
 	return retStr
 
 if __name__ == "__main__":
-	endSwarm = True
+	endSwarm = False
 	managerCounter = 1
 	workerCounter = 1
 	managerList = []
