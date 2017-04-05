@@ -1,0 +1,34 @@
+
+digraph e2e {
+        size="15"
+        style=filled;
+        color=blue;
+        node [style=filled,color=lightblue];
+    akamai_1->symantec_1
+symantec_1->F5_1
+F5_1->nginx_1
+F5_1->nginx_2
+user_1->dns
+user_2->dns
+dns->cassandra_1
+dns->cassandra_2
+dns->cassandra_3
+dns->cassandra_4
+dns->cassandra_5
+dns->cassandra_6
+dns->cassandra_7
+nginx_1->user_1
+nginx_1->user_2
+nginx_2->user_1
+nginx_2->user_2
+user_1->otherdns
+user_2->otherdns
+otherdns->mongo_1
+otherdns->mongo_2
+otherdns->mongo_3
+otherdns->mongo_4
+otherdns->mongo_5
+otherdns->mongo_6
+otherdns->mongo_7
+
+        }
