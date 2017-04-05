@@ -28,7 +28,7 @@ def getServices(fileContent):
 			retDict[service] = 1
 	return retDict
 
-def totalNodes(services):
+def totalWorkers(services):
 	total = -1
 	for service in services:
 		total = total + services[service]
@@ -81,19 +81,36 @@ def runCassandra(services, managerName):
 	cmd_str = sudo + 'docker-machine ssh ' + managerName+' '+sudo+'docker service create --replicas ' + str(replicas) + ' --name cassandra cassandra'
 	retStr = subprocess.check_output(cmd_str, shell=True).rstrip()
 
-def checkCassandra(managerName):
-	cmd_str = sudo + 'docker-machine ssh ' + managerName + ' ' + sudo + 'docker service ps cassandra'
+
+def createServices(services, managerName):
+	dockerServiceList = ['cassandra', 'redis', 'haproxy', 'consul', 'zookeeper', 'nginx']
+	replicas = 0
+	localServices = []
+
+	for service in services:
+		if service in dockerServiceList:
+			replicas = services[service]
+			cmd_end = service + ' ' + service
+			cmd_str = sudo+'docker-machine ssh '+managerName+' '+sudo+'docker service create --replicas ' + str(replicas) + ' --name ' + cmd_end
+			cmdReply = subprocess.check_output(cmd_str, shell=True).strip()
+		else:
+			localServices.append(service)
+
+def checkService(service, managerName):
+	cmd_str = sudo + 'docker-machine ssh ' + managerName + ' ' + sudo + 'docker service ps ' + service
 	retStr = subprocess.check_output(cmd_str, shell=True).rstrip()
 	return retStr
 
 if __name__ == "__main__":
+	endSwarm = True
 	managerCounter = 1
 	workerCounter = 1
 	managerList = []
 	workerList = []
 	sudo = 'sudo '
 
-	content = fileToList('e2e.dot')
+
+	content = fileToList('e2eWithCache.dot')
 	serviceDict = getServices(content)
 	manager1, managerCounter = newManagerName(managerCounter)
 	createMachine(manager1)
@@ -105,14 +122,17 @@ if __name__ == "__main__":
 
 	for worker in workerList:
 		swarmJoinWorker(manager1, worker)
-	runCassandra(serviceDict, manager1)
-	print checkCassandra(manager1)
-	
-	
+	createServices(serviceDict, manager1)
+	print checkService('cassandra',manager1)
+	print checkService('nginx', manager1)
 
 
-
-
+	if endSwarm:
+		cmd_str = sudo + 'docker-machine ssh ' + manager1 + ' ' + sudo + 'docker swarm leave --force'
+		cmdRep = subprocess.check_output(cmd_str, shell=True).strip()
+		for node in workerList:
+			cmd_str = sudo + 'docker-machine ssh ' + node +' '+sudo+'docker swarm leave'
+			cmdRep = subprocess.check_output(cmd_str, shell=True).strip()
 
 
 
