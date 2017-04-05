@@ -72,34 +72,35 @@ def swarmJoinWorker(managerName, workerName):
 	retStr = subprocess.check_output(cmd_str, shell=True).strip()
 	return retStr
 
-def runCassandra(services, managerName):
-	replicas = 0
-	for service in services:
-		if service == 'cassandra':
-			replicas = services[service]
-			break
-	cmd_str = sudo + 'docker-machine ssh ' + managerName+' '+sudo+'docker service create --replicas ' + str(replicas) + ' --name cassandra cassandra'
-	retStr = subprocess.check_output(cmd_str, shell=True).rstrip()
-
-
 def createServices(services, managerName):
-	dockerServiceList = ['cassandra', 'redis', 'haproxy', 'consul', 'zookeeper', 'nginx']
 	replicas = 0
 	localServices = []
 
 	for service in services:
-		if service in dockerServiceList:
+		if isOfficialService(service):
 			replicas = services[service]
 			cmd_end = service + ' ' + service
 			cmd_str = sudo+'docker-machine ssh '+managerName+' '+sudo+'docker service create --replicas ' + str(replicas) + ' --name ' + cmd_end
 			cmdReply = subprocess.check_output(cmd_str, shell=True).strip()
+			print 'Created service: ' + service + ' from docker hub.'
 		else:
 			localServices.append(service)
+	print 'Local services: ' + str(localServices)
 
 def checkService(service, managerName):
 	cmd_str = sudo + 'docker-machine ssh ' + managerName + ' ' + sudo + 'docker service ps ' + service
 	retStr = subprocess.check_output(cmd_str, shell=True).rstrip()
 	return retStr
+
+
+def isOfficialService(service):
+	cmd_str = sudo+"docker search --filter 'is-official=true' " + service
+	retStr = subprocess.check_output(cmd_str, shell=True).strip()
+	if service in retStr:
+		return True
+	else:
+		return False
+
 
 if __name__ == "__main__":
 	endSwarm = False
@@ -108,7 +109,6 @@ if __name__ == "__main__":
 	managerList = []
 	workerList = []
 	sudo = 'sudo '
-
 
 	content = fileToList('e2eWithCache.dot')
 	serviceDict = getServices(content)
@@ -123,8 +123,6 @@ if __name__ == "__main__":
 	for worker in workerList:
 		swarmJoinWorker(manager1, worker)
 	createServices(serviceDict, manager1)
-	print checkService('cassandra',manager1)
-	print checkService('nginx', manager1)
 
 
 	if endSwarm:
