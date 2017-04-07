@@ -86,6 +86,11 @@ def createServices(services, managerName):
 		else:
 			localServices.append(service)
 	print 'Local services: ' + str(localServices)
+	localDict = {}
+	for service in localServices:
+		localDict[service] = services[service]
+	runLocalServices(localDict, managerName)
+
 
 def checkService(service, managerName):
 	cmd_str = sudo + 'docker-machine ssh ' + managerName + ' ' + sudo + 'docker service ps ' + service
@@ -101,6 +106,24 @@ def isOfficialService(service):
 	else:
 		return False
 
+def runLocalServices(services, managerName):
+	replicas = 0
+	for service in services:		
+		if os.path.exists(service + '/Dockerfile'):
+			replicas = services[service]
+			cmd_end = service+' '+service
+			os.chdir(service)
+			cmd_str = sudo + 'docker build -t ' + service + ' .'
+			retStr = subprocess.check_output(cmd_str, shell=True)
+			print 'THIS IS RETURNED FROM BUILD:\n' + retStr
+			os.chdir('..')
+			cmd_str = sudo+'docker-machine ssh '+managerName+' '+sudo+'docker service create --replicas ' + str(replicas) + ' --name ' + cmd_end
+			retStr = subprocess.check_output(cmd_str, shell=True).strip()
+			print 'RETURNED FROM BUILD CONTAINER:\n' + retStr
+			print 'Service: ' + service + ' created from local dockerfile.'
+			
+			
+
 
 if __name__ == "__main__":
 	endSwarm = False
@@ -108,8 +131,8 @@ if __name__ == "__main__":
 	workerCounter = 1
 	managerList = []
 	workerList = []
-	sudo = 'sudo '
-
+	sudo = 'sudo '	
+	
 	content = fileToList('e2eWithCache.dot')
 	serviceDict = getServices(content)
 	manager1, managerCounter = newManagerName(managerCounter)
@@ -123,7 +146,7 @@ if __name__ == "__main__":
 	for worker in workerList:
 		swarmJoinWorker(manager1, worker)
 	createServices(serviceDict, manager1)
-
+	checkService('dns', manager1)
 
 	if endSwarm:
 		cmd_str = sudo + 'docker-machine ssh ' + manager1 + ' ' + sudo + 'docker swarm leave --force'
@@ -131,8 +154,6 @@ if __name__ == "__main__":
 		for node in workerList:
 			cmd_str = sudo + 'docker-machine ssh ' + node +' '+sudo+'docker swarm leave'
 			cmdRep = subprocess.check_output(cmd_str, shell=True).strip()
-
-
 
 
 
